@@ -1,0 +1,176 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>iTO 看板リモコン</title>
+<meta name="theme-color" content="#b0cf38">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="看板リモコン">
+<link rel="apple-touch-icon" href="icon-180.png">
+<link rel="icon" type="image/png" href="icon-192.png">
+<link rel="manifest" href="manifest.json">
+<!--
+  iTO 看板リモコン（docs/spec_remote_control.md）
+  押したボタンの指示を ntfy.sh の「指示用の名前」に送るだけ。看板が 20 秒ごとに読んで実行し、スマホに返事の通知が届く。
+  このページ自体には秘密を入れない。指示用の名前はアドレスの「#」の後ろ（サーバーには送られない）か、このスマホの中だけに保存する。
+-->
+<style>
+  :root {
+    --bg: #f6f7f2; --card: #ffffff; --text: #1d2116; --mute: #6b7160; --line: #e2e5d8;
+    --green: #8fae1f; --green-ink: #ffffff; --btn: #eef1e4; --btn-ink: #1d2116;
+    --warn: #c0392b; --warn-ink: #ffffff; --ok: #2e7d32;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --bg: #14160f; --card: #1e2117; --text: #eef0e6; --mute: #a3a893; --line: #33372a;
+      --green: #9cbc2b; --green-ink: #10120b; --btn: #2a2e21; --btn-ink: #eef0e6;
+      --warn: #e5534b; --warn-ink: #ffffff; --ok: #7cc47f;
+    }
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--bg); color: var(--text);
+         font-family: -apple-system, BlinkMacSystemFont, "Hiragino Sans", "Noto Sans JP", sans-serif;
+         padding: max(16px, env(safe-area-inset-top)) 16px max(24px, env(safe-area-inset-bottom)); }
+  header { display: flex; align-items: center; gap: 12px; max-width: 520px; margin: 0 auto 12px; }
+  header img { width: 44px; height: 44px; }
+  h1 { font-size: 20px; margin: 0; }
+  main { max-width: 520px; margin: 0 auto; }
+  section { background: var(--card); border: 1px solid var(--line); border-radius: 14px; padding: 14px; margin-bottom: 12px; }
+  h2 { font-size: 14px; color: var(--mute); margin: 0 0 10px; font-weight: 600; }
+  .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+  .grid3 { grid-template-columns: 1fr 1fr 1fr; }
+  button { font: inherit; font-size: 16px; min-height: 52px; border: 0; border-radius: 12px; padding: 10px 8px;
+           background: var(--btn); color: var(--btn-ink); cursor: pointer; }
+  button:active { transform: scale(0.98); }
+  button.main { background: var(--green); color: var(--green-ink); font-weight: 700; }
+  button.danger { background: var(--warn); color: var(--warn-ink); font-weight: 700; }
+  button.wide { grid-column: 1 / -1; }
+  button:disabled { opacity: .5; }
+  #msg { min-height: 48px; font-size: 15px; padding: 12px 14px; border-radius: 12px; margin-bottom: 12px;
+         background: var(--card); border: 1px solid var(--line); }
+  #msg.ok { border-color: var(--ok); }
+  #msg.err { border-color: var(--warn); color: var(--warn); }
+  .note { font-size: 13px; color: var(--mute); line-height: 1.6; }
+  #setup input { width: 100%; font-size: 16px; padding: 10px; border-radius: 10px; border: 1px solid var(--line);
+                 background: var(--bg); color: var(--text); margin: 8px 0; }
+  .hidden { display: none; }
+</style>
+</head>
+<body>
+<header>
+  <img src="icon-192.png" alt="">
+  <h1>iTO 看板リモコン</h1>
+</header>
+<main>
+  <div id="msg">ボタンを押すと看板に指示を送ります。20 秒ほどで看板から通知（ntfy）で返事が届きます。</div>
+
+  <div id="panel">
+    <section>
+      <h2>急に休むとき</h2>
+      <div class="grid">
+        <button class="danger wide" data-cmd="closedtoday" data-confirm="きょうは臨時休診にしますか？（「本日休診」を表示。あすは自動に戻ります）">きょうは臨時休診</button>
+        <button class="main wide" data-cmd="auto">自動の表示に戻す</button>
+      </div>
+    </section>
+
+    <section>
+      <h2>表示を手で変える（自動では戻りません）</h2>
+      <div class="grid grid3">
+        <button data-cmd="show:open">受付中</button>
+        <button data-cmd="show:after">時間外</button>
+        <button data-cmd="show:closed">本日休診</button>
+      </div>
+    </section>
+
+    <section>
+      <h2>明かり</h2>
+      <div class="grid">
+        <button data-cmd="lightsoff" data-confirm="看板をすべて消灯しますか？（ロゴも消えます。人感センサー・警戒・通知は動き続けます）">すべて消灯</button>
+        <button data-cmd="lightson">点灯に戻す</button>
+      </div>
+    </section>
+
+    <section>
+      <h2>全員退出（警戒）</h2>
+      <div class="grid">
+        <button class="main" data-cmd="arm">警戒開始</button>
+        <button data-cmd="disarm">警戒解除</button>
+      </div>
+    </section>
+
+    <section>
+      <h2>通知の量</h2>
+      <div class="grid grid3">
+        <button data-cmd="level:many">多い</button>
+        <button data-cmd="level:normal">ふつう</button>
+        <button data-cmd="level:few">少ない</button>
+      </div>
+    </section>
+
+    <section>
+      <div class="grid">
+        <button class="wide" data-cmd="status">いまの状態を教えて</button>
+      </div>
+      <p class="note">返事は ntfy アプリに届きます。院の外からも使えます（看板の Wi-Fi・インターネットが動いていれば）。</p>
+    </section>
+  </div>
+
+  <section id="setup" class="hidden">
+    <h2>はじめに</h2>
+    <p class="note">看板の設定ページ「スマホへの通知」にある QR コードを読み取って、このページを開き直してください。QR が使えないときは、「指示用の名前」（ito-sign-cmd- で始まる名前）を下に入れます。</p>
+    <input id="topicIn" placeholder="ito-sign-cmd-…" autocapitalize="off" autocomplete="off" spellcheck="false">
+    <button class="main" id="topicSave" style="width:100%">保存</button>
+  </section>
+</main>
+<script>
+(function () {
+  var KEY = 'ito-sign-cmd-topic';
+  var msg = document.getElementById('msg');
+  function say(t, cls) { msg.textContent = t; msg.className = cls || ''; }
+  function valid(t) { return /^ito-sign-cmd-[a-z0-9]{8,64}$/.test(t || ''); }
+  function store(t) { try { localStorage.setItem(KEY, t); } catch (e) {} }
+  function load() { try { return localStorage.getItem(KEY) || ''; } catch (e) { return ''; } }
+
+  // 名前: アドレスの「#」の後ろ → なければこのスマホに保存したもの
+  var topic = decodeURIComponent((location.hash || '').slice(1));
+  if (valid(topic)) store(topic); else topic = load();
+
+  function showSetup(on) {
+    document.getElementById('setup').classList.toggle('hidden', !on);
+    document.getElementById('panel').classList.toggle('hidden', on);
+    if (on) say('まだ看板とつながっていません。下の「はじめに」を見てください。', 'err');
+  }
+  showSetup(!valid(topic));
+
+  document.getElementById('topicSave').addEventListener('click', function () {
+    var t = document.getElementById('topicIn').value.trim();
+    if (!valid(t)) { say('名前が正しくありません（ito-sign-cmd- で始まる名前）', 'err'); return; }
+    topic = t; store(t);
+    history.replaceState(null, '', '#' + t);
+    showSetup(false);
+    say('保存しました。ホーム画面に追加しておくと次から押すだけで開けます。', 'ok');
+  });
+
+  var busy = false;
+  document.querySelectorAll('button[data-cmd]').forEach(function (b) {
+    b.addEventListener('click', function () {
+      if (busy) return;
+      var c = b.getAttribute('data-confirm');
+      if (c && !confirm(c)) return;
+      busy = true;
+      var label = b.textContent;
+      say('「' + label + '」を送っています…');
+      fetch('https://ntfy.sh/' + encodeURIComponent(topic), { method: 'POST', body: b.getAttribute('data-cmd') })
+        .then(function (r) {
+          if (!r.ok) throw new Error(r.status);
+          say('「' + label + '」を送りました。20 秒ほどで看板から返事の通知が届きます。', 'ok');
+        })
+        .catch(function () { say('送れませんでした。インターネットにつながっているか確かめてください。', 'err'); })
+        .then(function () { busy = false; });
+    });
+  });
+})();
+</script>
+</body>
+</html>
