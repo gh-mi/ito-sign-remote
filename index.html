@@ -87,10 +87,10 @@
 
   <div id="panel">
     <section>
-      <h2>急に休むとき</h2>
+      <h2>急に休むとき・元に戻すとき</h2>
       <div class="grid">
         <button class="danger wide" data-cmd="closedtoday" data-confirm="きょうは臨時休診にしますか？（「本日休診」を表示。あすは自動に戻ります）">きょうは臨時休診</button>
-        <button class="main wide" data-cmd="auto">自動の表示に戻す</button>
+        <button class="main wide" data-cmd="auto">自動（ふだんどおり）に戻す</button>
       </div>
     </section>
 
@@ -197,7 +197,7 @@
     $('stLv').textContent = LV[s.lv] || '—';
     $('stT').textContent = (s.t || '—') + (s.ld === false ? '（人感センサー異常）' : '');
     var cur = {};
-    if (s.src === 'auto') cur['auto'] = 1;
+    if (s.src === 'auto' && !s.off) cur['auto'] = 1;
     if (s.src === 'closed_today') cur['closedtoday'] = 1;
     if (s.src === 'button' || s.src === 'phone' || s.src === 'pc') cur['show:' + s.s] = 1;
     cur[s.off ? 'lightsoff' : 'lightson'] = 1;
