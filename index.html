@@ -80,6 +80,7 @@
       <tr><td>警戒</td><td id="stArm">—</td></tr>
       <tr><td>通知の量</td><td id="stLv">—</td></tr>
       <tr><td>最終更新</td><td id="stT">—</td></tr>
+      <tr><td>看板のファーム</td><td id="stFw">—</td></tr>
     </table>
   </section>
 
@@ -133,6 +134,7 @@
         <button class="wide" data-cmd="status">状態を読み直す</button>
       </div>
       <p class="note">操作する人: <b id="who"></b>（<button class="link" id="rename">名前を変える</button>）。操作すると、もう 1 人にも「○○さん：…しました」と通知が届きます。院の外からも使えます。</p>
+      <p class="note">リモコンのページ 2026-10-15 版 3</p>
     </section>
   </div>
 
@@ -149,6 +151,7 @@
 </main>
 <script>
 (function () {
+  // リモコンのページの版（直したら上げる。画面の下に出る）: 2026-10-15 版 3
   var KEY = 'ito-sign-cmd-topic', KEY_NAME = 'ito-sign-operator';
   var LV = ['多い（すべて）', 'ふつう', '少ない（防犯だけ）'];
   var msg = document.getElementById('msg');
@@ -196,6 +199,7 @@
     $('stArm').textContent = s.arm ? '警戒中' : 'していない';
     $('stLv').textContent = LV[s.lv] || '—';
     $('stT').textContent = (s.t || '—') + (s.ld === false ? '（人感センサー異常）' : '');
+    $('stFw').textContent = s.fw || '（REV006 より前）';
     var cur = {};
     if (s.src === 'auto' && !s.off) cur['auto'] = 1;
     if (s.src === 'closed_today') cur['closedtoday'] = 1;
