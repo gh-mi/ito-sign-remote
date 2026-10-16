@@ -80,8 +80,15 @@
       <tr><td>警戒</td><td id="stArm">—</td></tr>
       <tr><td>通知の量</td><td id="stLv">—</td></tr>
       <tr><td>最終更新</td><td id="stT">—</td></tr>
+      <tr id="rowMan" class="hidden"><td>手動</td><td id="stMan" style="color:var(--warn);font-weight:700">—</td></tr>
       <tr><td>看板のファーム</td><td id="stFw">—</td></tr>
     </table>
+  </section>
+
+  <section id="ask" class="hidden" style="border-color:var(--warn)">
+    <h2 style="color:var(--warn)">看板からの問い合わせ</h2>
+    <p id="askT" style="margin:0 0 10px"></p>
+    <div class="grid" id="askBtns"></div>
   </section>
 
   <div id="msg">ボタンを押すと看板に指示を送ります。看板が変わると上の「いまの看板」が変わります。</div>
@@ -134,7 +141,7 @@
         <button class="wide" data-cmd="status">状態を読み直す</button>
       </div>
       <p class="note">操作する人: <b id="who"></b>（<button class="link" id="rename">名前を変える</button>）。操作すると、もう 1 人にも「○○さん：…しました」と通知が届きます。院の外からも使えます。</p>
-      <p class="note">リモコンのページ 2026-10-15 版 3</p>
+      <p class="note">リモコンのページ 2026-10-16 版 4</p>
     </section>
   </div>
 
@@ -151,7 +158,7 @@
 </main>
 <script>
 (function () {
-  // リモコンのページの版（直したら上げる。画面の下に出る）: 2026-10-15 版 3
+  // リモコンのページの版（直したら上げる。画面の下に出る）: 2026-10-16 版 4
   var KEY = 'ito-sign-cmd-topic', KEY_NAME = 'ito-sign-operator';
   var LV = ['多い（すべて）', 'ふつう', '少ない（防犯だけ）'];
   var msg = document.getElementById('msg');
@@ -200,6 +207,27 @@
     $('stLv').textContent = LV[s.lv] || '—';
     $('stT').textContent = (s.t || '—') + (s.ld === false ? '（人感センサー異常）' : '');
     $('stFw').textContent = s.fw || '（REV006 より前）';
+    $('rowMan').classList.toggle('hidden', !s.man);
+    $('stMan').textContent = s.man ? '手動で設定中。次の切替 ' + (s.plan || '') : '';
+    var asking = s.man && (s.ask || s.pre);
+    $('ask').classList.toggle('hidden', !asking);
+    if (asking) {
+      $('askT').textContent = s.askt || '';
+      var bs = s.ask ? [['mr:auto', 'いま自動に戻す', 'main'], ['mr:next', '次の切替で自動に戻す', ''], ['mr:keep', '手動のまま続ける', '']]
+                     : [['mr:skip', '切り替えない（手動のまま）', 'danger']];
+      var key = (s.ask ? 'a' : 'p') + (s.ask || s.pre);
+      if ($('askBtns').getAttribute('data-k') !== key) {
+        $('askBtns').setAttribute('data-k', key);
+        $('askBtns').innerHTML = '';
+        bs.forEach(function (x) {
+          var b = document.createElement('button');
+          b.className = (x[2] ? x[2] + ' ' : '') + 'wide';
+          b.textContent = x[1];
+          b.onclick = function () { send(x[0], x[1], false); };
+          $('askBtns').appendChild(b);
+        });
+      }
+    }
     var cur = {};
     if (s.src === 'auto' && !s.off) cur['auto'] = 1;
     if (s.src === 'closed_today') cur['closedtoday'] = 1;
