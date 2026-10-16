@@ -141,7 +141,7 @@
         <button class="wide" data-cmd="status">状態を読み直す</button>
       </div>
       <p class="note">操作する人: <b id="who"></b>（<button class="link" id="rename">名前を変える</button>）。操作すると、もう 1 人にも「○○さん：…しました」と通知が届きます。院の外からも使えます。</p>
-      <p class="note">リモコンのページ 2026-10-16 版 4</p>
+      <p class="note">リモコンのページ 2026-10-16 版 5</p>
     </section>
   </div>
 
@@ -158,7 +158,7 @@
 </main>
 <script>
 (function () {
-  // リモコンのページの版（直したら上げる。画面の下に出る）: 2026-10-16 版 4
+  // リモコンのページの版（直したら上げる。画面の下に出る）: 2026-10-16 版 5
   var KEY = 'ito-sign-cmd-topic', KEY_NAME = 'ito-sign-operator';
   var LV = ['多い（すべて）', 'ふつう', '少ない（防犯だけ）'];
   var msg = document.getElementById('msg');
@@ -196,7 +196,7 @@
   });
 
   // ---- 看板の状態の表示 ----
-  var st = null;
+  var st = null, prevMan = null, prevSn = '';
   function render(s) {
     st = s;
     $('stName').textContent = s.sn || '（表示なし）';
@@ -208,7 +208,7 @@
     $('stT').textContent = (s.t || '—') + (s.ld === false ? '（人感センサー異常）' : '');
     $('stFw').textContent = s.fw || '（REV006 より前）';
     $('rowMan').classList.toggle('hidden', !s.man);
-    $('stMan').textContent = s.man ? '手動で設定中。次の切替 ' + (s.plan || '') : '';
+    $('stMan').textContent = s.man ? '手動で設定中。' + (s.plan || '') : '';
     var asking = s.man && (s.ask || s.pre);
     $('ask').classList.toggle('hidden', !asking);
     if (asking) {
@@ -240,9 +240,15 @@
     });
     if (pending && s.last === pending) {
       clearTimeout(pendingTimer);
-      say('「' + pendingLabel + '」を看板が反映しました ✓', 'ok');
+      var after = s.man ? '　いまは手動で「' + s.sn + '」。' + (s.plan || '') : '　いまは自動の切替で「' + s.sn + '」です。';
+      say('「' + pendingLabel + '」を看板が反映しました ✓' + after, 'ok');
       pending = '';
+    } else if (!pending && prevMan !== null && s.man && (!prevMan || prevSn !== s.sn)) {
+      say('看板が手動で「' + s.sn + '」になりました（' + s.by + '）。' + (s.plan || ''), 'ok');
+    } else if (!pending && prevMan && !s.man) {
+      say('看板が自動の切替に戻りました（いま「' + s.sn + '」）。', 'ok');
     }
+    prevMan = !!s.man; prevSn = s.sn;
   }
   function onMessage(m) {
     if (!m || m.event !== 'message' || typeof m.message !== 'string' || m.message.indexOf('state:') !== 0) return;
