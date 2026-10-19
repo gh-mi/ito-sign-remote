@@ -63,6 +63,11 @@
   #setup input { width: 100%; font-size: 16px; padding: 10px; border-radius: 10px; border: 1px solid var(--line);
                  background: var(--bg); color: var(--text); margin: 6px 0 12px; }
   .hidden { display: none; }
+  #notice summary { font-size: 16px; font-weight: 700; cursor: pointer; padding: 4px 0; }
+  #notice.has { border-color: var(--warn); } #notice.has summary { color: var(--warn); }
+  #unList .row { display: flex; gap: 8px; align-items: center; border-top: 1px solid var(--line); padding: 8px 0; font-size: 14px; }
+  #unList .row span { flex: 1; } #unList .row b { color: var(--mute); font-weight: 400; margin-right: 6px; }
+  #unList .row button { min-height: 40px; font-size: 14px; padding: 6px 12px; }
 </style>
 </head>
 <body>
@@ -89,6 +94,14 @@
     <h2 style="color:var(--warn)">看板からの問い合わせ</h2>
     <p id="askT" style="margin:0 0 10px"></p>
     <div class="grid" id="askBtns"></div>
+  </section>
+
+  <section id="notice">
+    <details id="unBox"><summary id="unSum">未読の通知はありません</summary>
+      <div id="unList"></div>
+      <button class="wide hidden" id="unAll" style="width:100%;margin-top:8px">すべて既読</button>
+      <p class="note">既読にすると、院の 2 名のスマホの ntfy の通知が消えます。もう 1 名には「○○さんが既読にしました」と音の鳴らない通知が届きます。</p>
+    </details>
   </section>
 
   <div id="msg">ボタンを押すと看板に指示を送ります。看板が変わると上の「いまの看板」が変わります。</div>
@@ -141,7 +154,7 @@
         <button class="wide" data-cmd="status">状態を読み直す</button>
       </div>
       <p class="note">操作する人: <b id="who"></b>（<button class="link" id="rename">名前を変える</button>）。操作すると、もう 1 人にも「○○さん：…しました」と通知が届きます。院の外からも使えます。</p>
-      <p class="note">リモコンのページ 2026-10-16 版 5</p>
+      <p class="note">リモコンのページ 2026-10-19 版 6</p>
     </section>
   </div>
 
@@ -158,7 +171,7 @@
 </main>
 <script>
 (function () {
-  // リモコンのページの版（直したら上げる。画面の下に出る）: 2026-10-16 版 5
+  // リモコンのページの版（直したら上げる。画面の下に出る）: 2026-10-19 版 6
   var KEY = 'ito-sign-cmd-topic', KEY_NAME = 'ito-sign-operator';
   var LV = ['多い（すべて）', 'ふつう', '少ない（防犯だけ）'];
   var msg = document.getElementById('msg');
@@ -228,6 +241,7 @@
         });
       }
     }
+    renderUnread(s.un || []);
     var cur = {};
     if (s.src === 'auto' && !s.off) cur['auto'] = 1;
     if (s.src === 'closed_today') cur['closedtoday'] = 1;
@@ -250,6 +264,29 @@
     }
     prevMan = !!s.man; prevSn = s.sn;
   }
+  // ---- 未読の通知（REV012）----
+  var unKey = '';
+  function renderUnread(un) {
+    $('unSum').textContent = un.length ? '未読の通知 ' + un.length + ' 件' : '未読の通知はありません';
+    $('notice').classList.toggle('has', un.length > 0);
+    $('unAll').classList.toggle('hidden', un.length < 2);
+    var k = un.map(function (u) { return u.i; }).join(',');
+    if (k === unKey) return;
+    unKey = k;
+    $('unList').innerHTML = '';
+    un.forEach(function (u) {
+      var row = document.createElement('div'); row.className = 'row';
+      var t = document.createElement('span'), w = document.createElement('b');
+      w.textContent = u.t || ''; t.appendChild(w); t.appendChild(document.createTextNode(u.m));
+      var b = document.createElement('button'); b.textContent = '既読';
+      b.onclick = function () { send('read:' + u.i, '既読', false); };
+      row.appendChild(t); row.appendChild(b); $('unList').appendChild(row);
+    });
+  }
+  $('unAll').addEventListener('click', function () { send('readall', 'すべて既読', false); });
+  try { $('unBox').open = localStorage.getItem('ito-sign-unopen') === '1'; } catch (e) {}
+  $('unBox').addEventListener('toggle', function () { put('ito-sign-unopen', $('unBox').open ? '1' : '0'); });
+
   function onMessage(m) {
     if (!m || m.event !== 'message' || typeof m.message !== 'string' || m.message.indexOf('state:') !== 0) return;
     try { render(JSON.parse(m.message.slice(6))); } catch (e) {}
