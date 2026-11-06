@@ -154,7 +154,7 @@
         <button class="wide" data-cmd="status">状態を読み直す</button>
       </div>
       <p class="note">操作する人: <b id="who"></b>（<button class="link" id="rename">名前を変える</button>）。操作すると、もう 1 人にも「○○さん：…しました」と通知が届きます。院の外からも使えます。</p>
-      <p class="note">リモコンのページ 2026-10-19 版 6</p>
+      <p class="note">リモコンのページ 2026-11-06 版 7</p>
     </section>
   </div>
 
@@ -171,7 +171,7 @@
 </main>
 <script>
 (function () {
-  // リモコンのページの版（直したら上げる。画面の下に出る）: 2026-10-19 版 6
+  // リモコンのページの版（直したら上げる。画面の下に出る）: 2026-11-06 版 7
   var KEY = 'ito-sign-cmd-topic', KEY_NAME = 'ito-sign-operator';
   var LV = ['多い（すべて）', 'ふつう', '少ない（防犯だけ）'];
   var msg = document.getElementById('msg');
@@ -215,7 +215,8 @@
     $('stName').textContent = s.sn || '（表示なし）';
     $('stDot').className = 'dot ' + (s.off ? '' : (s.s || ''));
     $('stBy').textContent = s.by || '—';
-    $('stLight').textContent = s.off ? 'すべて消灯中' : '点灯（明るさ ' + s.pct + '%）';
+    $('stLight').textContent = s.off ? 'すべて消灯中' : '点灯（明るさ ' + s.pct + '%）' + (s.lit ? '　点灯中: ' + s.lit : '');
+    if (s.stn && s.stn.length === 3) setNames(s.stn);
     $('stArm').textContent = s.arm ? '警戒中' : 'していない';
     $('stLv').textContent = LV[s.lv] || '—';
     $('stT').textContent = (s.t || '—') + (s.ld === false ? '（人感センサー異常）' : '');
@@ -263,6 +264,18 @@
       say('看板が自動の切替に戻りました（いま「' + s.sn + '」）。', 'ok');
     }
     prevMan = !!s.man; prevSn = s.sn;
+  }
+  // ---- 状態の名前（REV017: 受付 PC で入れた名前。ボタンの文字も書き換える）----
+  function setNames(n) {
+    function b(cmd) { return document.querySelector('button[data-cmd="' + cmd + '"]'); }
+    if (b('show:open')) b('show:open').textContent = n[0];
+    if (b('show:after')) b('show:after').textContent = n[1];
+    if (b('show:closed')) b('show:closed').textContent = n[2];
+    var t = b('closedtoday');
+    if (t) {
+      t.textContent = 'きょうは' + n[2];
+      t.setAttribute('data-confirm', 'きょうは' + n[2] + 'にしますか？（「' + n[2] + '」を表示。あすは自動に戻ります）');
+    }
   }
   // ---- 未読の通知（REV012）----
   var unKey = '';
