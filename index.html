@@ -63,6 +63,9 @@
   #setup input { width: 100%; font-size: 16px; padding: 10px; border-radius: 10px; border: 1px solid var(--line);
                  background: var(--bg); color: var(--text); margin: 6px 0 12px; }
   .hidden { display: none; }
+  #wiRow { display: flex; gap: 8px; align-items: center; margin-bottom: 10px; font-size: 15px; }
+  #wiRow input { font-size: 18px; padding: 8px; border-radius: 10px; border: 1px solid var(--line); background: var(--bg); color: var(--text); }
+  #wiQuick button { min-height: 44px; font-size: 14px; }
   #notice summary { font-size: 16px; font-weight: 700; cursor: pointer; padding: 4px 0; }
   #notice.has { border-color: var(--warn); } #notice.has summary { color: var(--warn); }
   #unList .row { display: flex; gap: 8px; align-items: center; border-top: 1px solid var(--line); padding: 8px 0; font-size: 14px; }
@@ -116,9 +119,23 @@
     </section>
 
     <section>
+      <h2 id="wiTitle">すぐ施術可にする（終わりの時刻で自動に戻ります）</h2>
+      <div id="wiRow">終わり <input type="time" id="wiTime" step="300"> まで</div>
+      <div class="grid grid3" id="wiQuick" style="margin-bottom:10px">
+        <button type="button" data-add="30">＋30 分</button>
+        <button type="button" data-add="60">＋1 時間</button>
+        <button type="button" data-add="end">受付終了まで</button>
+      </div>
+      <div class="grid">
+        <button class="main" id="wiGo">すぐ施術可にする</button>
+        <button id="wiBack" data-cmd="auto">要予約に戻す</button>
+      </div>
+      <p class="note" id="wiNote"></p>
+    </section>
+
+    <section>
       <h2>表示を手で変える（自動では戻りません）</h2>
-      <div class="grid grid3">
-        <button data-cmd="show:open">受付中</button>
+      <div class="grid">
         <button data-cmd="show:after">時間外</button>
         <button data-cmd="show:closed">本日休診</button>
       </div>
@@ -154,7 +171,7 @@
         <button class="wide" data-cmd="status">状態を読み直す</button>
       </div>
       <p class="note">操作する人: <b id="who"></b>（<button class="link" id="rename">名前を変える</button>）。操作すると、もう 1 人にも「○○さん：…しました」と通知が届きます。院の外からも使えます。</p>
-      <p class="note">リモコンのページ 2026-11-06 版 7</p>
+      <p class="note">リモコンのページ 2026-11-06 版 8</p>
     </section>
   </div>
 
@@ -171,7 +188,7 @@
 </main>
 <script>
 (function () {
-  // リモコンのページの版（直したら上げる。画面の下に出る）: 2026-11-06 版 7
+  // リモコンのページの版（直したら上げる。画面の下に出る）: 2026-11-06 版 8
   var KEY = 'ito-sign-cmd-topic', KEY_NAME = 'ito-sign-operator';
   var LV = ['多い（すべて）', 'ふつう', '少ない（防犯だけ）'];
   var msg = document.getElementById('msg');
@@ -246,6 +263,8 @@
     var cur = {};
     if (s.src === 'auto' && !s.off) cur['auto'] = 1;
     if (s.src === 'closed_today') cur['closedtoday'] = 1;
+    $('wiGo').classList.toggle('cur', s.src === 'walkin');
+    $('wiNote').textContent = s.src === 'walkin' ? 'いま「' + s.sn + '」（' + s.wu + ' まで）' : (s.bo === false ? 'いまは受付時間外です' : '');
     if (s.src === 'button' || s.src === 'phone' || s.src === 'pc') cur['show:' + s.s] = 1;
     cur[s.off ? 'lightsoff' : 'lightson'] = 1;
     cur[s.arm ? 'arm' : 'disarm'] = 1;
@@ -268,7 +287,9 @@
   // ---- 状態の名前（REV017: 受付 PC で入れた名前。ボタンの文字も書き換える）----
   function setNames(n) {
     function b(cmd) { return document.querySelector('button[data-cmd="' + cmd + '"]'); }
-    if (b('show:open')) b('show:open').textContent = n[0];
+    $('wiTitle').textContent = n[0] + 'にする（終わりの時刻で自動に戻ります）';
+    $('wiGo').textContent = n[0] + 'にする';
+    $('wiBack').textContent = n[1] + 'に戻す';
     if (b('show:after')) b('show:after').textContent = n[1];
     if (b('show:closed')) b('show:closed').textContent = n[2];
     var t = b('closedtoday');
@@ -342,6 +363,27 @@
       .catch(function () { if (!quiet) say('送れませんでした。インターネットにつながっているか確かめてください。', 'err'); })
       .then(function () { busy = false; });
   }
+  // ---- すぐ施術可（〜何時まで。REV019）----
+  function pad(n) { return (n < 10 ? '0' : '') + n; }
+  function hm(d) { return pad(d.getHours()) + ':' + pad(d.getMinutes()); }
+  document.querySelectorAll('#wiQuick button').forEach(function (b) {
+    b.addEventListener('click', function () {
+      var a = b.getAttribute('data-add');
+      if (a === 'end') { if (st && st.ce) $('wiTime').value = st.ce; else say('きょうの受付終了の時刻がまだ分かりません（看板の返事待ち）', 'err'); return; }
+      var base = new Date();
+      var v = $('wiTime').value;
+      if (v) { var p = v.split(':'); var t = new Date(); t.setHours(+p[0], +p[1], 0, 0); if (t > base) base = t; }
+      base = new Date(base.getTime() + (+a) * 60000);
+      $('wiTime').value = hm(base);
+    });
+  });
+  $('wiGo').addEventListener('click', function () {
+    var v = $('wiTime').value;
+    var name = (st && st.stn) ? st.stn[0] : 'すぐ施術可';
+    if (!/^\d\d:\d\d$/.test(v)) { say('終わりの時刻を入れてください（例 15:00、または［＋1 時間］）', 'err'); return; }
+    if (st && st.bo === false && !confirm('いまは受付時間外です。それでも「' + name + '」にしますか？')) return;
+    send('walkin:' + v, name + '（' + v + ' まで）', false);
+  });
   document.querySelectorAll('button[data-cmd]').forEach(function (b) {
     b.addEventListener('click', function () {
       var c = b.getAttribute('data-confirm');
